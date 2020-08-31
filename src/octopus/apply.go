@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
+	"octopus/parser"
 	"os"
-	"parser"
 )
 
 // ApplyCmd get the arguments from apply command
