@@ -17,6 +17,7 @@ type Lexer struct {
 	fd       *os.File
 	fileName string
 	fdEnd    bool
+	tokens   []Token
 }
 
 // Token stores the information
@@ -42,34 +43,63 @@ type tkClass int
 var lexer Lexer
 
 var reservedWords map[string]tkClass = map[string]tkClass{
-	"file":    tkResourceFile,
-	"package": tkResourcePackage,
-	"service": tkResourceService,
+	"file":    TkResourceFile,
+	"package": TkResourcePackage,
+	"service": TkResourceService,
+}
+
+// Holds the text representation of tokens.
+// It's useful to provide error messages for users.
+var tokenText map[tkClass]string = map[tkClass]string{
+	TkUndefined:       "undefined",
+	TkEOF:             "eof",
+	TkString:          "string",
+	TkInt:             "integer",
+	TkIdentifier:      "identifier",
+	TkNewLine:         "new line",
+	TkColon:           ":",
+	TkIdent:           "ident",
+	TkDedent:          "dedent",
+	TkEqual:           "=",
+	TkPlus:            "+",
+	TkClassDef:        "class",
+	TkPoint:           ".",
+	TkLeftParentenses: "(",
+	TkRightParenteses: ")",
+	TkHashMark:        "#",
+	TkLeftBrackets:    "[",
+	TkRightBrackets:   "]",
+	TkLeftBraces:      "{",
+	TkRightBraces:     "}",
+	TkResourceFile:    "file",
+	TkResourcePackage: "package",
+	TkResourceService: "service",
 }
 
 const (
-	tkUndefined       tkClass = -1
-	tkEOF             tkClass = 0
-	tkString          tkClass = 1
-	tkInt             tkClass = 2
-	tkIdentifier      tkClass = 3
-	tkNewLine         tkClass = 4
-	tkColon           tkClass = 5
-	tkIdent           tkClass = 6
-	tkDedent          tkClass = 7
-	tkEqual           tkClass = 8
-	tkPlus            tkClass = 9
-	tkPoint           tkClass = 10
-	tkLeftParentenses tkClass = 11
-	tkRightParenteses tkClass = 12
-	tkHashMark        tkClass = 13
-	tkLeftBrackets    tkClass = 14
-	tkRightBrackets   tkClass = 15
-	tkLeftBraces      tkClass = 16
-	tkRightBraces     tkClass = 17
-	tkResourceFile    tkClass = 50
-	tkResourcePackage tkClass = 51
-	tkResourceService tkClass = 52
+	TkUndefined       tkClass = -1
+	TkEOF             tkClass = 0
+	TkString          tkClass = 1
+	TkInt             tkClass = 2
+	TkIdentifier      tkClass = 3
+	TkNewLine         tkClass = 4
+	TkColon           tkClass = 5
+	TkIdent           tkClass = 6
+	TkDedent          tkClass = 7
+	TkEqual           tkClass = 8
+	TkPlus            tkClass = 9
+	TkClassDef        tkClass = 10
+	TkPoint           tkClass = 20
+	TkLeftParentenses tkClass = 21
+	TkRightParenteses tkClass = 22
+	TkHashMark        tkClass = 23
+	TkLeftBrackets    tkClass = 24
+	TkRightBrackets   tkClass = 25
+	TkLeftBraces      tkClass = 26
+	TkRightBraces     tkClass = 27
+	TkResourceFile    tkClass = 50
+	TkResourcePackage tkClass = 51
+	TkResourceService tkClass = 52
 )
 
 func check(e error) {
@@ -259,68 +289,88 @@ func Init(fileName string) {
 	lexer.readToBuffer()
 }
 
-// GetToken is invoked by parser.Parse()
-// to request tokens from the input
+func (l *Lexer) pushToken(class tkClass, value string) {
+	tk := l.createToken(class, value)
+	l.tokens = append(l.tokens, tk)
+}
+
+// GetTokenText gets text value of tokens
+func GetTokenText() string {
+	tk := GetToken()
+	return tokenText[tk.Class]
+}
+
+// GetToken is invoked by parser to see the last
+// captured token
 func GetToken() Token {
+	return lexer.tokens[len(lexer.tokens)-1]
+}
+
+// NextToken is invoked by parser.Parse()
+// to capture the next token (if available)
+func NextToken() {
 	// check for EOF flag
 	if lexer.fdEnd {
-		return lexer.createToken(tkEOF, "")
+		lexer.pushToken(TkEOF, "")
+		return
 	}
 
 	lexer.ignoreWhiteSpaces()
 	char := lexer.getChar()
 
 	if isInt(char) {
-		return lexer.createToken(tkInt, lexer.captureInt())
+		lexer.pushToken(TkInt, lexer.captureInt())
+		return
 	}
 
 	if isIdentifier(char) {
-		return lexer.createToken(tkIdentifier, lexer.captureIdentifier())
+		lexer.pushToken(TkIdentifier, lexer.captureIdentifier())
+		return
 	}
 
 	switch char {
 	case "\"":
-		return lexer.createToken(tkString, lexer.captureDoubleQuoteString())
+		lexer.pushToken(TkString, lexer.captureDoubleQuoteString())
 	case "'":
-		return lexer.createToken(tkString, lexer.captureSingleQuoteString())
+		lexer.pushToken(TkString, lexer.captureSingleQuoteString())
 	case "\n":
 		lexer.match("\n")
 		// supporting LFCR
 		lexer.lookAheadMatch("\r")
 		lexer.pos = 0
 		lexer.line++
-		return lexer.createToken(tkNewLine, "NEW_LINE")
+		lexer.pushToken(TkNewLine, "NEW_LINE")
 	case "+":
 		lexer.match("+")
-		return lexer.createToken(tkPlus, "+")
+		lexer.pushToken(TkPlus, "+")
 	case ":":
 		lexer.match(":")
-		return lexer.createToken(tkColon, ":")
+		lexer.pushToken(TkColon, ":")
 	case "=":
 		lexer.match("=")
-		return lexer.createToken(tkEqual, "=")
+		lexer.pushToken(TkEqual, "=")
 	case "#":
 		lexer.match("#")
-		return lexer.createToken(tkHashMark, "#")
+		lexer.pushToken(TkHashMark, "#")
 	case "(":
 		lexer.match("(")
-		return lexer.createToken(tkLeftParentenses, "(")
+		lexer.pushToken(TkLeftParentenses, "(")
 	case ")":
 		lexer.match(")")
-		return lexer.createToken(tkRightParenteses, ")")
+		lexer.pushToken(TkRightParenteses, ")")
 	case "[":
 		lexer.match("[")
-		return lexer.createToken(tkLeftBrackets, "[")
+		lexer.pushToken(TkLeftBrackets, "[")
 	case "]":
 		lexer.match("]")
-		return lexer.createToken(tkRightBrackets, "]")
+		lexer.pushToken(TkRightBrackets, "]")
 	case "{":
 		lexer.match("{")
-		return lexer.createToken(tkLeftBraces, "{")
+		lexer.pushToken(TkLeftBraces, "{")
 	case "}":
 		lexer.match("}")
-		return lexer.createToken(tkRightBraces, "}")
+		lexer.pushToken(TkRightBraces, "}")
+	default:
+		lexer.pushToken(TkUndefined, "")
 	}
-
-	return lexer.createToken(tkUndefined, "")
 }
