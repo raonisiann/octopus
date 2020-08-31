@@ -1,7 +1,7 @@
 
 
 all:
-	go build -o ./bin/octopus **/*.go
+	go build -o ./bin/octopus octopus
 
 clean:
 	rm -f bin/octopus
