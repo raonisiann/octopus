@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var identLevel int
+var identLevel int = 0
 var identSize int = 4
 
 // Parse is the main parser function
@@ -19,29 +19,44 @@ func Parse(fileName string) {
 	topLevel()
 }
 
-func error(expected lexer.Token) {
+func error(e lexer.TkClassType) {
 	tk := lexer.GetToken()
 	fmt.Printf(
-		"Expected '%s', but get '%s'\n",
-		lexer.GetTokenText(expected.Class),
+		"Expected '%s', but get '%s' on position %d line %d\n",
+		lexer.GetTokenText(e),
 		lexer.GetTokenText(tk.Class),
+		lexer.GetTokenCurrentPosition(),
+		lexer.GetTokenCurrentLine(),
 	)
 	os.Exit(-1)
 }
 
-func accept(token lexer.Token) bool {
-	if token == lexer.GetToken() {
+func accept(c lexer.TkClassType) bool {
+	if c == lexer.GetToken().Class {
 		return true
 	}
 	return false
 }
 
-func expect(token lexer.Token) bool {
-	if accept(token) {
+func expect(c lexer.TkClassType) bool {
+	if accept(c) {
 		return true
 	}
-	error(token)
+	error(c)
 	return false
+}
+
+func getIdentLevel() int {
+	fmt.Printf("-->> Ident: %d", identLevel)
+	return identLevel
+}
+
+func ident() {
+	identLevel += identSize
+}
+
+func dedent() {
+	identLevel -= identSize
 }
 
 func topLevel() {
@@ -50,11 +65,36 @@ func topLevel() {
 		lexer.NextToken()
 		tk := lexer.GetToken()
 
-		if tk.Class == lexer.TkEOF {
+		switch tk := lexer.GetToken(); tk.Class {
+		case lexer.TkEOF:
 			fmt.Println("End of file")
-			break
+			os.Exit(-1)
+		case lexer.TkNewLine:
+			fmt.Println("NEW_LINE")
+			continue
+		case lexer.TkClassDef:
+			classHeader()
+		default:
+			fmt.Printf("Unexpected token %s at top level", lexer.GetTokenText(tk.Class))
 		}
 
-		fmt.Printf("%s(%s)\n", lexer.GetTokenText(tk.Class), tk.Value)
+		fmt.Printf("%s => %s\n", lexer.GetTokenText(tk.Class), tk.Value)
 	}
+}
+
+func classHeader() {
+	expect(lexer.TkClassDef)
+
+	lexer.NextToken()
+	tkClassIdentifier := lexer.GetToken()
+	fmt.Printf(" class name = %s\n", tkClassIdentifier.Value)
+
+	lexer.NextToken()
+	expect(lexer.TkColon)
+	lexer.NextToken()
+	expect(lexer.TkNewLine)
+}
+
+func classBody() {
+
 }

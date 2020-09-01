@@ -23,7 +23,7 @@ type Lexer struct {
 // Token stores the information
 // about the tokens captured.
 type Token struct {
-	Class  tkClass
+	Class  TkClassType
 	Value  string
 	Length int
 }
@@ -38,11 +38,14 @@ type Value struct {
 	}
 }
 
-type tkClass int
+// TkClassType holds the values for
+// every type of token defined.
+type TkClassType int
 
 var lexer Lexer
 
-var reservedWords map[string]tkClass = map[string]tkClass{
+var reservedWords map[string]TkClassType = map[string]TkClassType{
+	"class":   TkClassDef,
 	"file":    TkResourceFile,
 	"package": TkResourcePackage,
 	"service": TkResourceService,
@@ -50,7 +53,7 @@ var reservedWords map[string]tkClass = map[string]tkClass{
 
 // Holds the text representation of tokens.
 // It's useful to provide error messages for users.
-var tokenText map[tkClass]string = map[tkClass]string{
+var tokenText map[TkClassType]string = map[TkClassType]string{
 	TkUndefined:       "undefined",
 	TkEOF:             "eof",
 	TkString:          "string",
@@ -63,6 +66,7 @@ var tokenText map[tkClass]string = map[tkClass]string{
 	TkEqual:           "=",
 	TkPlus:            "+",
 	TkClassDef:        "class",
+	TkComma:           ",",
 	TkPoint:           ".",
 	TkLeftParentenses: "(",
 	TkRightParenteses: ")",
@@ -77,29 +81,41 @@ var tokenText map[tkClass]string = map[tkClass]string{
 }
 
 const (
-	TkUndefined       tkClass = -1
-	TkEOF             tkClass = 0
-	TkString          tkClass = 1
-	TkInt             tkClass = 2
-	TkIdentifier      tkClass = 3
-	TkNewLine         tkClass = 4
-	TkColon           tkClass = 5
-	TkIdent           tkClass = 6
-	TkDedent          tkClass = 7
-	TkEqual           tkClass = 8
-	TkPlus            tkClass = 9
-	TkClassDef        tkClass = 10
-	TkPoint           tkClass = 20
-	TkLeftParentenses tkClass = 21
-	TkRightParenteses tkClass = 22
-	TkHashMark        tkClass = 23
-	TkLeftBrackets    tkClass = 24
-	TkRightBrackets   tkClass = 25
-	TkLeftBraces      tkClass = 26
-	TkRightBraces     tkClass = 27
-	TkResourceFile    tkClass = 50
-	TkResourcePackage tkClass = 51
-	TkResourceService tkClass = 52
+	// TkUndefined is the default token type
+	TkUndefined TkClassType = -1
+	// TkEOF means literary EOF
+	TkEOF TkClassType = 0
+	// TkString token of type string
+	// Strings are any caracters delimited by
+	// either " (double quote) or ' (single quote)
+	TkString TkClassType = 1
+	// TkInt token of type integer
+	TkInt TkClassType = 2
+	// TkIdentifier token of type identifier.
+	// Follows the `[a-zA-Z_]{1}[a-zA-Z0-9_\-]+` regex
+	TkIdentifier TkClassType = 3
+	// TkNewLine match either \n or \n\r
+	TkNewLine TkClassType = 4
+	// TkColon matches ':' symbol
+	TkColon  TkClassType = 5
+	TkIdent  TkClassType = 6
+	TkDedent TkClassType = 7
+	// TkEqual matches the '=' sign
+	TkEqual           TkClassType = 8
+	TkPlus            TkClassType = 9
+	TkClassDef        TkClassType = 10
+	TkComma           TkClassType = 11
+	TkPoint           TkClassType = 20
+	TkLeftParentenses TkClassType = 21
+	TkRightParenteses TkClassType = 22
+	TkHashMark        TkClassType = 23
+	TkLeftBrackets    TkClassType = 24
+	TkRightBrackets   TkClassType = 25
+	TkLeftBraces      TkClassType = 26
+	TkRightBraces     TkClassType = 27
+	TkResourceFile    TkClassType = 50
+	TkResourcePackage TkClassType = 51
+	TkResourceService TkClassType = 52
 )
 
 func check(e error) {
@@ -108,7 +124,7 @@ func check(e error) {
 	}
 }
 
-func (l *Lexer) createToken(class tkClass, value string) Token {
+func (l *Lexer) createToken(class TkClassType, value string) Token {
 	newTk := Token{
 		class,
 		value,
@@ -178,6 +194,17 @@ func (l *Lexer) matchAny(chars ...string) bool {
 		}
 	}
 	return false
+}
+
+func (l *Lexer) matchIfReservedWord(s string) (TkClassType, bool) {
+
+	for i, v := range reservedWords {
+		if i == s {
+			return v, true
+		}
+	}
+
+	return TkUndefined, false
 }
 
 func (l *Lexer) lookAheadMatch(char string) bool {
@@ -289,14 +316,14 @@ func Init(fileName string) {
 	lexer.readToBuffer()
 }
 
-func (l *Lexer) pushToken(class tkClass, value string) {
-	tk := l.createToken(class, value)
+func (l *Lexer) pushToken(c TkClassType, v string) {
+	tk := l.createToken(c, v)
 	l.tokens = append(l.tokens, tk)
 }
 
 // GetTokenText gets text value of tokens
-func GetTokenText(class tkClass) string {
-	return tokenText[class]
+func GetTokenText(c TkClassType) string {
+	return tokenText[c]
 }
 
 // GetToken is invoked by parser to see the last
@@ -305,13 +332,30 @@ func GetToken() Token {
 	return lexer.tokens[len(lexer.tokens)-1]
 }
 
+func GetTokenCurrentPosition() int {
+	return lexer.pos
+}
+
+func GetTokenCurrentLine() int {
+	return lexer.line
+}
+
+
+func 
 // NextToken is invoked by parser.Parse()
 // to capture the next token (if available)
 func NextToken() {
+
 	// check for EOF flag
 	if lexer.fdEnd {
 		lexer.pushToken(TkEOF, "")
 		return
+	}
+
+	// if the last token was a new line, 
+	// we a going to count the number of idents
+	if lexer.getChar().Class == lexer.TkNewLine {
+
 	}
 
 	lexer.ignoreWhiteSpaces()
@@ -323,7 +367,14 @@ func NextToken() {
 	}
 
 	if isIdentifier(char) {
-		lexer.pushToken(TkIdentifier, lexer.captureIdentifier())
+		identifier := lexer.captureIdentifier()
+		class, found := lexer.matchIfReservedWord(identifier)
+
+		if !found {
+			class = TkIdentifier
+		}
+
+		lexer.pushToken(class, identifier)
 		return
 	}
 
@@ -339,6 +390,9 @@ func NextToken() {
 		lexer.pos = 0
 		lexer.line++
 		lexer.pushToken(TkNewLine, "NEW_LINE")
+	case ",":
+		lexer.match(",")
+		lexer.pushToken(TkComma, ",")
 	case "+":
 		lexer.match("+")
 		lexer.pushToken(TkPlus, "+")
