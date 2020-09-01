@@ -13,13 +13,19 @@ var identSize int = 4
 func Parse(fileName string) {
 
 	lexer.Init(fileName)
+
 	identLevel = 0
 
 	topLevel()
 }
 
 func error(expected lexer.Token) {
-	fmt.Printf("Expected '%s', but get '%s'\n", expected.Class, lexer.GetTokenText())
+	tk := lexer.GetToken()
+	fmt.Printf(
+		"Expected '%s', but get '%s'\n",
+		lexer.GetTokenText(expected.Class),
+		lexer.GetTokenText(tk.Class),
+	)
 	os.Exit(-1)
 }
 
@@ -41,15 +47,14 @@ func expect(token lexer.Token) bool {
 func topLevel() {
 
 	for {
-		switch tk := lexer.GetToken(); tk.Class {
-		case lexer.TkEOF:
+		lexer.NextToken()
+		tk := lexer.GetToken()
+
+		if tk.Class == lexer.TkEOF {
 			fmt.Println("End of file")
-			return
-		case lexer.TkNewLine:
-			fmt.Printf("")
-		case lexer.TkClassDef:
-			fmt.Printf("Class")
+			break
 		}
 
+		fmt.Printf("%s(%s)\n", lexer.GetTokenText(tk.Class), tk.Value)
 	}
 }

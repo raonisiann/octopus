@@ -295,9 +295,8 @@ func (l *Lexer) pushToken(class tkClass, value string) {
 }
 
 // GetTokenText gets text value of tokens
-func GetTokenText() string {
-	tk := GetToken()
-	return tokenText[tk.Class]
+func GetTokenText(class tkClass) string {
+	return tokenText[class]
 }
 
 // GetToken is invoked by parser to see the last
