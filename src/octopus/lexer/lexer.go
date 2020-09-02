@@ -42,6 +42,8 @@ type Value struct {
 // every type of token defined.
 type TkClassType int
 
+var IdentLevel int = 0
+var IdentSize int = 4
 var lexer Lexer
 
 var reservedWords map[string]TkClassType = map[string]TkClassType{
@@ -145,7 +147,6 @@ func (l *Lexer) readToBuffer() {
 	check(err)
 
 	l.size = count
-	l.index = -1
 
 	fmt.Printf("--> Read %d bytes\n", l.size)
 }
@@ -287,7 +288,7 @@ func (l *Lexer) captureIdentifier() string {
 }
 
 func (l *Lexer) ignoreWhiteSpaces() {
-	l.nextChar()
+
 	for {
 		char := l.getChar()
 		if char != " " {
@@ -332,16 +333,21 @@ func GetToken() Token {
 	return lexer.tokens[len(lexer.tokens)-1]
 }
 
+// GetTokenCurrentPosition returns the current cursor position
 func GetTokenCurrentPosition() int {
 	return lexer.pos
 }
 
+// GetTokenCurrentLine returns the current line number
 func GetTokenCurrentLine() int {
 	return lexer.line
 }
 
+// GetIdentLevel returns the current identation level
+func GetIdentLevel() int {
+	return IdentLevel
+}
 
-func 
 // NextToken is invoked by parser.Parse()
 // to capture the next token (if available)
 func NextToken() {
@@ -352,10 +358,27 @@ func NextToken() {
 		return
 	}
 
-	// if the last token was a new line, 
-	// we a going to count the number of idents
-	if lexer.getChar().Class == lexer.TkNewLine {
+	lexer.nextChar()
 
+	// if the last token was a new line,
+	// we a going to count the number of idents
+	if len(lexer.tokens) != 0 && GetToken().Class == TkNewLine {
+		spacesCount := 0
+
+		for {
+			if lexer.getChar() != " " {
+				break
+			}
+			spacesCount++
+			lexer.nextChar()
+		}
+		if (spacesCount % IdentSize) != 0 {
+			fmt.Println("Invalid ident size")
+			os.Exit(-1)
+		}
+		// set the current ident level
+		IdentLevel = spacesCount / IdentSize
+		fmt.Printf("IDENT_SIZE=%d\n", IdentLevel)
 	}
 
 	lexer.ignoreWhiteSpaces()
@@ -385,8 +408,13 @@ func NextToken() {
 		lexer.pushToken(TkString, lexer.captureSingleQuoteString())
 	case "\n":
 		lexer.match("\n")
-		// supporting LFCR
-		lexer.lookAheadMatch("\r")
+		lexer.pos = 0
+		lexer.line++
+		lexer.pushToken(TkNewLine, "NEW_LINE")
+	case "\r":
+		lexer.match("\r")
+		// supporting Windows new line
+		lexer.lookAheadMatch("\n")
 		lexer.pos = 0
 		lexer.line++
 		lexer.pushToken(TkNewLine, "NEW_LINE")

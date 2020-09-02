@@ -6,15 +6,10 @@ import (
 	"os"
 )
 
-var identLevel int = 0
-var identSize int = 4
-
 // Parse is the main parser function
 func Parse(fileName string) {
 
 	lexer.Init(fileName)
-
-	identLevel = 0
 
 	topLevel()
 }
@@ -46,17 +41,14 @@ func expect(c lexer.TkClassType) bool {
 	return false
 }
 
-func getIdentLevel() int {
-	fmt.Printf("-->> Ident: %d", identLevel)
-	return identLevel
-}
+func ignoreEmptyNewLines() {
 
-func ident() {
-	identLevel += identSize
-}
-
-func dedent() {
-	identLevel -= identSize
+	for {
+		lexer.NextToken()
+		if lexer.GetToken().Class != lexer.TkNewLine {
+			break
+		}
+	}
 }
 
 func topLevel() {
@@ -67,13 +59,12 @@ func topLevel() {
 
 		switch tk := lexer.GetToken(); tk.Class {
 		case lexer.TkEOF:
-			fmt.Println("End of file")
-			os.Exit(-1)
+			return
 		case lexer.TkNewLine:
 			fmt.Println("NEW_LINE")
 			continue
 		case lexer.TkClassDef:
-			classHeader()
+			class(0)
 		default:
 			fmt.Printf("Unexpected token %s at top level", lexer.GetTokenText(tk.Class))
 		}
@@ -82,7 +73,8 @@ func topLevel() {
 	}
 }
 
-func classHeader() {
+func class(ident int) {
+	// class header
 	expect(lexer.TkClassDef)
 
 	lexer.NextToken()
@@ -93,8 +85,72 @@ func classHeader() {
 	expect(lexer.TkColon)
 	lexer.NextToken()
 	expect(lexer.TkNewLine)
+
+	definitions()
+	os.Exit(-1)
 }
 
-func classBody() {
+func definitions() {
+	// class body
+	expectedIdent := lexer.GetIdentLevel() + 1
+	ignoreEmptyNewLines()
+	for lexer.GetIdentLevel() == expectedIdent {
+
+		switch tk := lexer.GetToken(); tk.Class {
+		case lexer.TkIdentifier:
+			fmt.Println("IDENTIFIER")
+			identifier()
+		case lexer.TkResourceFile:
+			fmt.Println("RESOURCE")
+		case lexer.TkResourcePackage:
+			fmt.Println("PACKAGE")
+		case lexer.TkResourceService:
+			fmt.Println("SERVICE")
+		default:
+			fmt.Printf("Unexpected token %s at this point\n", lexer.GetTokenText(tk.Class))
+			os.Exit(-1)
+		}
+
+		lexer.NextToken()
+	}
+
+	fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
+}
+
+func identifier() {
+	expect(lexer.TkIdentifier)
+	lexer.NextToken()
+	expect(lexer.TkEqual)
+	lexer.NextToken()
+	expression()
+}
+
+func expression() {
+
+	for {
+		switch tk := lexer.GetToken(); tk.Class {
+		case lexer.TkString:
+			fmt.Println("STRING")
+		case lexer.TkInt:
+			fmt.Println("INT")
+		default:
+			fmt.Printf("Unexpected token %s at this point", lexer.GetTokenText(tk.Class))
+			os.Exit(-1)
+		}
+
+		lexer.NextToken()
+	}
+
+}
+
+func resourceFile(ident int) {
+
+}
+
+func resourcePackage(ident int) {
+
+}
+
+func resourceService(ident int) {
 
 }
