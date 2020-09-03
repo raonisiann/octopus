@@ -52,6 +52,18 @@ func acceptAny(classes ...lexer.TkClassType) bool {
 	return false
 }
 
+// acceptLookAhead can lookup and match 2 tokens ahead.
+// If lookahead fails, we rollback to the previous token
+func acceptLookAhead(c lexer.TkClassType, lookahead lexer.TkClassType) bool {
+	if accept(c) {
+		if accept(lookahead) {
+			return true
+		}
+		lexer.PopToken()
+	}
+	return false
+}
+
 func expect(c lexer.TkClassType) bool {
 	if accept(c) {
 		return true
