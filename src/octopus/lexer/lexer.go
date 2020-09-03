@@ -48,9 +48,9 @@ var lexer Lexer
 
 var reservedWords map[string]TkClassType = map[string]TkClassType{
 	"class":   TkClassDef,
-	"file":    TkResourceFile,
-	"package": TkResourcePackage,
-	"service": TkResourceService,
+	"file":    TkResource,
+	"package": TkResource,
+	"service": TkResource,
 }
 
 // Holds the text representation of tokens.
@@ -107,6 +107,14 @@ const (
 	TkPlus            TkClassType = 9
 	TkClassDef        TkClassType = 10
 	TkComma           TkClassType = 11
+	TkMinus           TkClassType = 12
+	TkAndOper         TkClassType = 13
+	TkOrOper          TkClassType = 14
+	TkNotEqual        TkClassType = 15
+	TkGt              TkClassType = 16
+	TkGte             TkClassType = 17
+	TkLt              TkClassType = 18
+	TkLte             TkClassType = 19
 	TkPoint           TkClassType = 20
 	TkLeftParentenses TkClassType = 21
 	TkRightParenteses TkClassType = 22
@@ -115,9 +123,11 @@ const (
 	TkRightBrackets   TkClassType = 25
 	TkLeftBraces      TkClassType = 26
 	TkRightBraces     TkClassType = 27
+	TkBool            TkClassType = 40
 	TkResourceFile    TkClassType = 50
 	TkResourcePackage TkClassType = 51
 	TkResourceService TkClassType = 52
+	TkResource        TkClassType = 80
 )
 
 func check(e error) {
@@ -378,7 +388,7 @@ func NextToken() {
 		}
 		// set the current ident level
 		IdentLevel = spacesCount / IdentSize
-		fmt.Printf("IDENT_SIZE=%d\n", IdentLevel)
+		fmt.Printf("SET_IDENT_SIZE=%d\n", IdentLevel)
 	}
 
 	lexer.ignoreWhiteSpaces()

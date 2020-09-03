@@ -6,11 +6,13 @@ import (
 	"os"
 )
 
+const firstIdentLevel int = 0
+
 // Parse is the main parser function
 func Parse(fileName string) {
 
 	lexer.Init(fileName)
-
+	lexer.NextToken()
 	topLevel()
 }
 
@@ -27,8 +29,25 @@ func error(e lexer.TkClassType) {
 }
 
 func accept(c lexer.TkClassType) bool {
-	if c == lexer.GetToken().Class {
+	tk := lexer.GetToken()
+
+	if c == tk.Class {
+		fmt.Printf("Accepted '%s'\n", lexer.GetTokenText(tk.Class))
+		lexer.NextToken()
 		return true
+	}
+	return false
+}
+
+// acceptAny will check if the current token class
+// matches any of the token classes in the list provided
+// as argument.
+func acceptAny(classes ...lexer.TkClassType) bool {
+
+	for _, v := range classes {
+		if accept(v) {
+			return true
+		}
 	}
 	return false
 }
@@ -41,116 +60,165 @@ func expect(c lexer.TkClassType) bool {
 	return false
 }
 
+func expectOne(list ...lexer.TkClassType) bool {
+
+	strClass := ""
+
+	for _, v := range list {
+		if accept(v) {
+			return true
+		}
+		strClass = strClass + "'" + lexer.GetTokenText(v) + "', "
+	}
+
+	fmt.Printf(
+		"Expected at least one of %s but get '%s'\n",
+		strClass,
+		lexer.GetTokenText(lexer.GetToken().Class),
+	)
+
+	return false
+}
+
 func ignoreEmptyNewLines() {
 
-	for {
-		lexer.NextToken()
-		if lexer.GetToken().Class != lexer.TkNewLine {
-			break
-		}
+	for accept(lexer.TkNewLine) {
 	}
 }
 
 func topLevel() {
 
 	for {
-		lexer.NextToken()
 		tk := lexer.GetToken()
 
 		switch tk := lexer.GetToken(); tk.Class {
 		case lexer.TkEOF:
 			return
 		case lexer.TkNewLine:
-			fmt.Println("NEW_LINE")
+			expect(lexer.TkNewLine)
 			continue
 		case lexer.TkClassDef:
-			class(0)
+			expect(lexer.TkClassDef)
+			class(firstIdentLevel)
+			continue
 		default:
-			fmt.Printf("Unexpected token %s at top level", lexer.GetTokenText(tk.Class))
+			fmt.Printf("Unexpected token '%s' at top level\n", lexer.GetTokenText(tk.Class))
+			os.Exit(-1)
 		}
 
 		fmt.Printf("%s => %s\n", lexer.GetTokenText(tk.Class), tk.Value)
+		lexer.NextToken()
 	}
 }
 
-func class(ident int) {
-	// class header
-	expect(lexer.TkClassDef)
+func class(expectedIdent int) {
 
-	lexer.NextToken()
 	tkClassIdentifier := lexer.GetToken()
 	fmt.Printf(" class name = %s\n", tkClassIdentifier.Value)
 
 	lexer.NextToken()
 	expect(lexer.TkColon)
-	lexer.NextToken()
 	expect(lexer.TkNewLine)
 
-	definitions()
-	os.Exit(-1)
+	statement(expectedIdent + 1)
 }
 
-func definitions() {
-	// class body
-	expectedIdent := lexer.GetIdentLevel() + 1
+func statement(expectedIdent int) {
+
 	ignoreEmptyNewLines()
+
 	for lexer.GetIdentLevel() == expectedIdent {
-
+		fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
 		switch tk := lexer.GetToken(); tk.Class {
-		case lexer.TkIdentifier:
-			fmt.Println("IDENTIFIER")
-			identifier()
-		case lexer.TkResourceFile:
-			fmt.Println("RESOURCE")
-		case lexer.TkResourcePackage:
-			fmt.Println("PACKAGE")
-		case lexer.TkResourceService:
-			fmt.Println("SERVICE")
-		default:
-			fmt.Printf("Unexpected token %s at this point\n", lexer.GetTokenText(tk.Class))
-			os.Exit(-1)
-		}
 
-		lexer.NextToken()
+		case lexer.TkResource:
+			resource(tk.Value, expectedIdent)
+		default:
+			//fmt.Printf("Unexpected token %s at this point\n", lexer.GetTokenText(tk.Class))
+			//os.Exit(-1)
+			expression()
+		}
 	}
 
-	fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
 }
 
-func identifier() {
-	expect(lexer.TkIdentifier)
-	lexer.NextToken()
-	expect(lexer.TkEqual)
-	lexer.NextToken()
-	expression()
+func resource(name string, expectedIdent int) {
+
+	expect(lexer.TkResource)
+	tkResourceName := lexer.GetToken()
+	expect(lexer.TkString)
+
+	fmt.Printf("Resource : %s=%s\n", name, tkResourceName.Value)
+	expect(lexer.TkColon)
+	expect(lexer.TkNewLine)
+
+	statementBlock(expectedIdent + 1)
+}
+
+func statementBlock(expectedIdent int) {
+
+	ignoreEmptyNewLines()
+
+	for lexer.GetIdentLevel() == expectedIdent {
+		fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
+		switch tk := lexer.GetToken(); tk.Class {
+
+		case lexer.TkResource:
+			resource(tk.Value, expectedIdent)
+		default:
+			//fmt.Printf("Unexpected token %s at this point\n", lexer.GetTokenText(tk.Class))
+			//os.Exit(-1)
+			expression()
+		}
+	}
 }
 
 func expression() {
 
-	for {
-		switch tk := lexer.GetToken(); tk.Class {
-		case lexer.TkString:
-			fmt.Println("STRING")
-		case lexer.TkInt:
-			fmt.Println("INT")
-		default:
-			fmt.Printf("Unexpected token %s at this point", lexer.GetTokenText(tk.Class))
-			os.Exit(-1)
-		}
+	term()
+	for acceptAny(
+		lexer.TkPlus,
+		lexer.TkMinus,
+		lexer.TkAndOper,
+		lexer.TkOrOper,
+	) {
 
-		lexer.NextToken()
+		fmt.Printf("Token %s\n", lexer.GetTokenText(lexer.GetToken().Class))
 	}
 
 }
 
-func resourceFile(ident int) {
+func term() {
 
+	factor()
+	for acceptAny(
+		lexer.TkEqual,
+		lexer.TkNotEqual,
+		lexer.TkGt,
+		lexer.TkGte,
+		lexer.TkLt,
+		lexer.TkLte,
+	) {
+	}
 }
 
-func resourcePackage(ident int) {
+func factor() {
 
-}
+	switch tk := lexer.GetToken(); tk.Class {
+	case lexer.TkIdentifier:
+		expect(lexer.TkIdentifier)
 
-func resourceService(ident int) {
-
+		if accept(lexer.TkEqual) {
+			expression()
+		}
+	case lexer.TkString:
+		expect(lexer.TkString)
+	case lexer.TkInt:
+		expect(lexer.TkInt)
+	case lexer.TkBool:
+		expect(lexer.TkBool)
+	default:
+		fmt.Printf("Unexpected token %s at factor\n", lexer.GetTokenText(tk.Class))
+		os.Exit(-1)
+	}
 }
