@@ -18,6 +18,7 @@ type Lexer struct {
 	fileName string
 	fdEnd    bool
 	tokens   []Token
+	tkIndex  int
 }
 
 // Token stores the information
@@ -332,6 +333,16 @@ func (l *Lexer) pushToken(c TkClassType, v string) {
 	l.tokens = append(l.tokens, tk)
 }
 
+// PopToken it's a pseudo pop method used to set
+// the position of the GetToken to the last
+// retrieved token. Like if you are poping from an
+// stack without actually poping :D
+func PopToken() {
+	if lexer.tkIndex >= 0 {
+		lexer.tkIndex--
+	}
+}
+
 // GetTokenText gets text value of tokens
 func GetTokenText(c TkClassType) string {
 	return tokenText[c]
@@ -365,6 +376,14 @@ func NextToken() {
 	// check for EOF flag
 	if lexer.fdEnd {
 		lexer.pushToken(TkEOF, "")
+		return
+	}
+
+	// lexer.tkIndex might be not poiting to
+	// last element. If that's the case we just
+	// move the index forward.
+	if lexer.tkIndex < (len(lexer.tokens) - 1) {
+		lexer.tkIndex++
 		return
 	}
 
