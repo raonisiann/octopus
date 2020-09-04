@@ -43,15 +43,28 @@ type Value struct {
 // every type of token defined.
 type TkClassType int
 
+// IdentLevel expose the current identation level
+// captured by the Lexer
 var IdentLevel int = 0
+
+// IdentSize sets the default identation size
 var IdentSize int = 4
 var lexer Lexer
 
 var reservedWords map[string]TkClassType = map[string]TkClassType{
 	"class":   TkClassDef,
-	"file":    TkResource,
-	"package": TkResource,
-	"service": TkResource,
+	"file":    TkResourceStmt,
+	"package": TkResourceStmt,
+	"service": TkResourceStmt,
+	"if":      TkIfStmt,
+	"else":    TkElseStmt,
+	"elif":    TkElifStmt,
+	"switch":  TkSwitchStmt,
+	"case":    TkSwitchCaseStmt,
+	"for":     TkForStmt,
+	"in":      TkInOper,
+	"and":     TkAndOper,
+	"or":      TkOrOper,
 }
 
 // Holds the text representation of tokens.
@@ -64,8 +77,6 @@ var tokenText map[TkClassType]string = map[TkClassType]string{
 	TkIdentifier:      "identifier",
 	TkNewLine:         "new line",
 	TkColon:           ":",
-	TkIdent:           "ident",
-	TkDedent:          "dedent",
 	TkEqual:           "=",
 	TkPlus:            "+",
 	TkClassDef:        "class",
@@ -78,9 +89,6 @@ var tokenText map[TkClassType]string = map[TkClassType]string{
 	TkRightBrackets:   "]",
 	TkLeftBraces:      "{",
 	TkRightBraces:     "}",
-	TkResourceFile:    "file",
-	TkResourcePackage: "package",
-	TkResourceService: "service",
 }
 
 const (
@@ -100,9 +108,7 @@ const (
 	// TkNewLine match either \n or \n\r
 	TkNewLine TkClassType = 4
 	// TkColon matches ':' symbol
-	TkColon  TkClassType = 5
-	TkIdent  TkClassType = 6
-	TkDedent TkClassType = 7
+	TkColon TkClassType = 5
 	// TkEqual matches the '=' sign
 	TkEqual           TkClassType = 8
 	TkPlus            TkClassType = 9
@@ -124,11 +130,15 @@ const (
 	TkRightBrackets   TkClassType = 25
 	TkLeftBraces      TkClassType = 26
 	TkRightBraces     TkClassType = 27
+	TkInOper          TkClassType = 28
 	TkBool            TkClassType = 40
-	TkResourceFile    TkClassType = 50
-	TkResourcePackage TkClassType = 51
-	TkResourceService TkClassType = 52
-	TkResource        TkClassType = 80
+	TkIfStmt          TkClassType = 70
+	TkElseStmt        TkClassType = 71
+	TkElifStmt        TkClassType = 72
+	TkForStmt         TkClassType = 73
+	TkSwitchStmt      TkClassType = 74
+	TkSwitchCaseStmt  TkClassType = 75
+	TkResourceStmt    TkClassType = 80
 )
 
 func check(e error) {
@@ -247,7 +257,18 @@ func isIdentifier(char string) bool {
 }
 
 func (l *Lexer) captureInt() string {
-	return ""
+	retInt := ""
+
+	for {
+		char := l.getChar()
+		if !isInt(char) {
+			break
+		}
+		retInt += char
+		l.nextChar()
+	}
+	l.prevChar()
+	return retInt
 }
 
 func (l *Lexer) captureDoubleQuoteString() string {
@@ -324,12 +345,14 @@ func Init(fileName string) {
 	lexer.pos = 0
 	lexer.fd = fd
 	lexer.fileName = fileName
+	lexer.tkIndex = -1
 
 	lexer.readToBuffer()
 }
 
 func (l *Lexer) pushToken(c TkClassType, v string) {
 	tk := l.createToken(c, v)
+	lexer.tkIndex++
 	l.tokens = append(l.tokens, tk)
 }
 
@@ -351,7 +374,7 @@ func GetTokenText(c TkClassType) string {
 // GetToken is invoked by parser to see the last
 // captured token
 func GetToken() Token {
-	return lexer.tokens[len(lexer.tokens)-1]
+	return lexer.tokens[lexer.tkIndex]
 }
 
 // GetTokenCurrentPosition returns the current cursor position
@@ -382,7 +405,7 @@ func NextToken() {
 	// lexer.tkIndex might be not poiting to
 	// last element. If that's the case we just
 	// move the index forward.
-	if lexer.tkIndex < (len(lexer.tokens) - 1) {
+	if lexer.tkIndex != (len(lexer.tokens) - 1) {
 		lexer.tkIndex++
 		return
 	}
@@ -450,6 +473,9 @@ func NextToken() {
 	case ",":
 		lexer.match(",")
 		lexer.pushToken(TkComma, ",")
+	case ".":
+		lexer.match(".")
+		lexer.pushToken(TkPoint, ".")
 	case "+":
 		lexer.match("+")
 		lexer.pushToken(TkPlus, "+")

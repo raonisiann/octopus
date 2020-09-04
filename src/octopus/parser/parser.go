@@ -127,8 +127,7 @@ func class(expectedIdent int) {
 
 	tkClassIdentifier := lexer.GetToken()
 	fmt.Printf(" class name = %s\n", tkClassIdentifier.Value)
-
-	lexer.NextToken()
+	expect(lexer.TkIdentifier)
 	expect(lexer.TkColon)
 	expect(lexer.TkNewLine)
 
@@ -140,14 +139,29 @@ func statement(expectedIdent int) {
 	ignoreEmptyNewLines()
 
 	for lexer.GetIdentLevel() == expectedIdent {
+		ignoreEmptyNewLines()
 		fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
 		switch tk := lexer.GetToken(); tk.Class {
 
-		case lexer.TkResource:
+		case lexer.TkResourceStmt:
 			resource(tk.Value, expectedIdent)
+		case lexer.TkIfStmt:
+			fmt.Println("IF")
+		case lexer.TkForStmt:
+			fmt.Println("FOR")
+		case lexer.TkSwitchStmt:
+			fmt.Println("SWITCH")
+		case lexer.TkPoint:
+			expect(lexer.TkPoint)
+			fmt.Printf("Resource Attribute --->>>> %s\n", lexer.GetToken().Value)
+			expect(lexer.TkIdentifier)
+			expect(lexer.TkEqual)
+			expression()
+		case lexer.TkIdentifier:
+			expect(lexer.TkIdentifier)
+			expect(lexer.TkEqual)
+			expression()
 		default:
-			//fmt.Printf("Unexpected token %s at this point\n", lexer.GetTokenText(tk.Class))
-			//os.Exit(-1)
 			expression()
 		}
 	}
@@ -156,9 +170,9 @@ func statement(expectedIdent int) {
 
 func resource(name string, expectedIdent int) {
 
-	expect(lexer.TkResource)
+	expect(lexer.TkResourceStmt)
 	tkResourceName := lexer.GetToken()
-	expect(lexer.TkString)
+	acceptAny(lexer.TkString, lexer.TkIdentifier)
 
 	fmt.Printf("Resource : %s=%s\n", name, tkResourceName.Value)
 	expect(lexer.TkColon)
@@ -173,15 +187,7 @@ func statementBlock(expectedIdent int) {
 
 	for lexer.GetIdentLevel() == expectedIdent {
 		fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
-		switch tk := lexer.GetToken(); tk.Class {
-
-		case lexer.TkResource:
-			resource(tk.Value, expectedIdent)
-		default:
-			//fmt.Printf("Unexpected token %s at this point\n", lexer.GetTokenText(tk.Class))
-			//os.Exit(-1)
-			expression()
-		}
+		statement(expectedIdent)
 	}
 }
 
@@ -194,8 +200,7 @@ func expression() {
 		lexer.TkAndOper,
 		lexer.TkOrOper,
 	) {
-
-		fmt.Printf("Token %s\n", lexer.GetTokenText(lexer.GetToken().Class))
+		term()
 	}
 
 }
@@ -211,6 +216,7 @@ func term() {
 		lexer.TkLt,
 		lexer.TkLte,
 	) {
+		factor()
 	}
 }
 
@@ -219,10 +225,6 @@ func factor() {
 	switch tk := lexer.GetToken(); tk.Class {
 	case lexer.TkIdentifier:
 		expect(lexer.TkIdentifier)
-
-		if accept(lexer.TkEqual) {
-			expression()
-		}
 	case lexer.TkString:
 		expect(lexer.TkString)
 	case lexer.TkInt:
