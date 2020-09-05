@@ -16,16 +16,41 @@ func Parse(fileName string) {
 	topLevel()
 }
 
-func error(e lexer.TkClassType) {
+func fatal(err string) {
+	fmt.Printf(err)
+	os.Exit(-1)
+}
+
+func errorExpectedToken(t lexer.TkClassType) {
 	tk := lexer.GetToken()
-	fmt.Printf(
+	err := fmt.Sprintf(
 		"Expected '%s', but get '%s' on position %d line %d\n",
-		lexer.GetTokenText(e),
+		lexer.GetTokenText(t),
 		lexer.GetTokenText(tk.Class),
 		lexer.GetTokenCurrentPosition(),
 		lexer.GetTokenCurrentLine(),
 	)
-	os.Exit(-1)
+	fatal(err)
+}
+
+func errorUnexpectedToken(t lexer.TkClassType) {
+	err := fmt.Sprintf(
+		"Unexpected '%s' on position %d line %d\n",
+		lexer.GetTokenText(t),
+		lexer.GetTokenCurrentPosition(),
+		lexer.GetTokenCurrentLine(),
+	)
+	fatal(err)
+}
+
+func isEOF() bool {
+	tk := lexer.GetToken()
+
+	if tk.Class == lexer.TkEOF {
+		return true
+	}
+
+	return false
 }
 
 func accept(c lexer.TkClassType) bool {
@@ -68,7 +93,7 @@ func expect(c lexer.TkClassType) bool {
 	if accept(c) {
 		return true
 	}
-	error(c)
+	errorExpectedToken(c)
 	return false
 }
 
@@ -114,8 +139,7 @@ func topLevel() {
 			class(firstIdentLevel)
 			continue
 		default:
-			fmt.Printf("Unexpected token '%s' at top level\n", lexer.GetTokenText(tk.Class))
-			os.Exit(-1)
+			errorUnexpectedToken(tk.Class)
 		}
 
 		fmt.Printf("%s => %s\n", lexer.GetTokenText(tk.Class), tk.Value)
@@ -162,7 +186,7 @@ func statement(expectedIdent int) {
 			expect(lexer.TkEqual)
 			expression()
 		default:
-			expression()
+			errorUnexpectedToken(tk.Class)
 		}
 	}
 
@@ -232,7 +256,6 @@ func factor() {
 	case lexer.TkBool:
 		expect(lexer.TkBool)
 	default:
-		fmt.Printf("Unexpected token %s at factor\n", lexer.GetTokenText(tk.Class))
-		os.Exit(-1)
+		errorUnexpectedToken(tk.Class)
 	}
 }
