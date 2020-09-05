@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"fmt"
-	"octopus/lexer"
-	"os"
+    "fmt"
+    "octopus/lexer"
+    "os"
 )
 
 const firstIdentLevel int = 0
@@ -11,56 +11,56 @@ const firstIdentLevel int = 0
 // Parse is the main parser function
 func Parse(fileName string) {
 
-	lexer.Init(fileName)
-	topLevel()
+    lexer.Init(fileName)
+    topLevel()
 }
 
 func fatal(err string) {
-	fmt.Printf(err)
-	os.Exit(-1)
+    fmt.Printf(err)
+    os.Exit(-1)
 }
 
 func errorExpectedToken(t lexer.TkClassType) {
-	tk := lexer.GetToken()
-	err := fmt.Sprintf(
-		"Expected '%s', but get '%s' on position %d line %d\n",
-		lexer.GetTokenText(t),
-		lexer.GetTokenText(tk.Class),
-		lexer.GetTokenCurrentPosition(),
-		lexer.GetTokenCurrentLine(),
-	)
-	fatal(err)
+    tk := lexer.GetToken()
+    err := fmt.Sprintf(
+        "Expected '%s', but get '%s' on position %d line %d\n",
+        lexer.GetTokenText(t),
+        lexer.GetTokenText(tk.Class),
+        lexer.GetTokenCurrentPosition(),
+        lexer.GetTokenCurrentLine(),
+    )
+    fatal(err)
 }
 
 func errorUnexpectedToken(t lexer.TkClassType) {
-	err := fmt.Sprintf(
-		"Unexpected '%s' on position %d line %d\n",
-		lexer.GetTokenText(t),
-		lexer.GetTokenCurrentPosition(),
-		lexer.GetTokenCurrentLine(),
-	)
-	fatal(err)
+    err := fmt.Sprintf(
+        "Unexpected '%s' on position %d line %d\n",
+        lexer.GetTokenText(t),
+        lexer.GetTokenCurrentPosition(),
+        lexer.GetTokenCurrentLine(),
+    )
+    fatal(err)
 }
 
 func isEOF() bool {
-	tk := lexer.GetToken()
+    tk := lexer.GetToken()
 
-	if tk.Class == lexer.TkEOF {
-		return true
-	}
+    if tk.Class == lexer.TkEOF {
+        return true
+    }
 
-	return false
+    return false
 }
 
 func accept(c lexer.TkClassType) bool {
-	tk := lexer.GetToken()
+    tk := lexer.GetToken()
 
-	if c == tk.Class {
-		fmt.Printf("Accepted '%s'\n", lexer.GetTokenText(tk.Class))
-		lexer.NextToken()
-		return true
-	}
-	return false
+    if c == tk.Class {
+        fmt.Printf("Accepted '%s'\n", lexer.GetTokenText(tk.Class))
+        lexer.NextToken()
+        return true
+    }
+    return false
 }
 
 // acceptAny will check if the current token class
@@ -68,215 +68,215 @@ func accept(c lexer.TkClassType) bool {
 // as argument.
 func acceptAny(classes ...lexer.TkClassType) bool {
 
-	for _, v := range classes {
-		if accept(v) {
-			return true
-		}
-	}
-	return false
+    for _, v := range classes {
+        if accept(v) {
+            return true
+        }
+    }
+    return false
 }
 
 // acceptLookAhead can lookup and match 2 tokens ahead.
 // If lookahead fails, we rollback to the previous token
 func acceptLookAhead(c lexer.TkClassType, lookahead lexer.TkClassType) bool {
-	if accept(c) {
-		if accept(lookahead) {
-			return true
-		}
-		lexer.PopToken()
-	}
-	return false
+    if accept(c) {
+        if accept(lookahead) {
+            return true
+        }
+        lexer.PopToken()
+    }
+    return false
 }
 
 func expect(c lexer.TkClassType) bool {
-	if accept(c) {
-		return true
-	}
-	errorExpectedToken(c)
-	return false
+    if accept(c) {
+        return true
+    }
+    errorExpectedToken(c)
+    return false
 }
 
 func expectOne(list ...lexer.TkClassType) bool {
 
-	strClass := ""
+    strClass := ""
 
-	for _, v := range list {
-		if accept(v) {
-			return true
-		}
-		strClass = strClass + "'" + lexer.GetTokenText(v) + "', "
-	}
+    for _, v := range list {
+        if accept(v) {
+            return true
+        }
+        strClass = strClass + "'" + lexer.GetTokenText(v) + "', "
+    }
 
-	fmt.Printf(
-		"Expected at least one of %s but get '%s'\n",
-		strClass,
-		lexer.GetTokenText(lexer.GetToken().Class),
-	)
+    fmt.Printf(
+        "Expected at least one of %s but get '%s'\n",
+        strClass,
+        lexer.GetTokenText(lexer.GetToken().Class),
+    )
 
-	return false
+    return false
 }
 
 func ignoreEmptyNewLines() {
 
-	for accept(lexer.TkNewLine) {
-	}
+    for accept(lexer.TkNewLine) {
+    }
 }
 
 func topLevel() {
-	// request the first token
-	lexer.NextToken()
+    // request the first token
+    lexer.NextToken()
 
-	for {
-		ignoreEmptyNewLines()
-		tk := lexer.GetToken()
-		fmt.Printf(" => %s\n", lexer.GetTokenText(tk.Class))
+    for {
+        ignoreEmptyNewLines()
+        tk := lexer.GetToken()
+        fmt.Printf(" => %s\n", lexer.GetTokenText(tk.Class))
 
-		switch tk.Class {
-		case lexer.TkEOF:
-			return
-		case lexer.TkNewLine:
-			expect(lexer.TkNewLine)
-		case lexer.TkClassDef:
-			expect(lexer.TkClassDef)
-			class(firstIdentLevel)
-		default:
-			errorUnexpectedToken(tk.Class)
-		}
+        switch tk.Class {
+        case lexer.TkEOF:
+            return
+        case lexer.TkNewLine:
+            expect(lexer.TkNewLine)
+        case lexer.TkClassDef:
+            expect(lexer.TkClassDef)
+            class(firstIdentLevel)
+        default:
+            errorUnexpectedToken(tk.Class)
+        }
 
-	}
+    }
 }
 
 func class(expectedIdent int) {
 
-	tkClassIdentifier := lexer.GetToken()
-	fmt.Printf(" class name = %s\n", tkClassIdentifier.Value)
-	expect(lexer.TkIdentifier)
-	expect(lexer.TkColon)
-	expect(lexer.TkNewLine)
+    tkClassIdentifier := lexer.GetToken()
+    fmt.Printf(" class name = %s\n", tkClassIdentifier.Value)
+    expect(lexer.TkIdentifier)
+    expect(lexer.TkColon)
+    expect(lexer.TkNewLine)
 
-	statement(expectedIdent + 1)
+    statement(expectedIdent + 1)
 }
 
 func statement(expectedIdent int) {
 
-	ignoreEmptyNewLines()
+    ignoreEmptyNewLines()
 
-	for lexer.GetIdentLevel() == expectedIdent && !isEOF() {
-		ignoreEmptyNewLines()
+    for lexer.GetIdentLevel() == expectedIdent && !isEOF() {
+        ignoreEmptyNewLines()
 
-		if isEOF() {
-			return
-		}
+        if isEOF() {
+            return
+        }
 
-		fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
-		switch tk := lexer.GetToken(); tk.Class {
+        fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
+        switch tk := lexer.GetToken(); tk.Class {
 
-		case lexer.TkResourceStmt:
-			resource(tk.Value, expectedIdent)
-		case lexer.TkIfStmt:
-			fmt.Println("IF")
-		case lexer.TkForStmt:
-			fmt.Println("FOR")
-		case lexer.TkSwitchStmt:
-			fmt.Println("SWITCH")
-		case lexer.TkPoint:
-			expect(lexer.TkPoint)
-			fmt.Printf("Resource Attribute --->>>> %s\n", lexer.GetToken().Value)
-			expect(lexer.TkIdentifier)
-			expect(lexer.TkEqual)
-			expression()
-		case lexer.TkIdentifier:
-			expect(lexer.TkIdentifier)
-			expect(lexer.TkEqual)
-			expression()
-		default:
-			errorUnexpectedToken(tk.Class)
-		}
-	}
+        case lexer.TkResourceStmt:
+            resource(tk.Value, expectedIdent)
+        case lexer.TkIfStmt:
+            fmt.Println("IF")
+        case lexer.TkForStmt:
+            fmt.Println("FOR")
+        case lexer.TkSwitchStmt:
+            fmt.Println("SWITCH")
+        case lexer.TkPoint:
+            expect(lexer.TkPoint)
+            fmt.Printf("Resource Attribute --->>>> %s\n", lexer.GetToken().Value)
+            expect(lexer.TkIdentifier)
+            expect(lexer.TkEqual)
+            expression()
+        case lexer.TkIdentifier:
+            expect(lexer.TkIdentifier)
+            expect(lexer.TkEqual)
+            expression()
+        default:
+            errorUnexpectedToken(tk.Class)
+        }
+    }
 
 }
 
 func resource(name string, expectedIdent int) {
 
-	expect(lexer.TkResourceStmt)
-	tkResourceName := lexer.GetToken()
-	acceptAny(lexer.TkString, lexer.TkIdentifier)
-	fmt.Printf("Resource : %s=%s\n", name, tkResourceName.Value)
-	expect(lexer.TkColon)
-	expect(lexer.TkNewLine)
-	statementBlock(expectedIdent + 1)
+    expect(lexer.TkResourceStmt)
+    tkResourceName := lexer.GetToken()
+    acceptAny(lexer.TkString, lexer.TkIdentifier)
+    fmt.Printf("Resource : %s=%s\n", name, tkResourceName.Value)
+    expect(lexer.TkColon)
+    expect(lexer.TkNewLine)
+    statementBlock(expectedIdent + 1)
 }
 
 func statementBlock(expectedIdent int) {
 
-	for lexer.GetIdentLevel() == expectedIdent {
-		ignoreEmptyNewLines()
+    for lexer.GetIdentLevel() == expectedIdent {
+        ignoreEmptyNewLines()
 
-		if isEOF() {
-			return
-		}
+        if isEOF() {
+            return
+        }
 
-		fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
-		statement(expectedIdent)
-	}
+        fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
+        statement(expectedIdent)
+    }
 }
 
 func expressionList() {
 
-	for {
-		expression()
-		if !accept(lexer.TkComma) {
-			return
-		}
-	}
+    for {
+        expression()
+        if !accept(lexer.TkComma) {
+            return
+        }
+    }
 }
 
 func expression() {
 
-	term()
-	for acceptAny(
-		lexer.TkPlus,
-		lexer.TkMinus,
-		lexer.TkAndOper,
-		lexer.TkOrOper,
-	) {
-		term()
-	}
+    term()
+    for acceptAny(
+        lexer.TkPlus,
+        lexer.TkMinus,
+        lexer.TkAndOper,
+        lexer.TkOrOper,
+    ) {
+        term()
+    }
 
 }
 
 func term() {
 
-	factor()
-	for acceptAny(
-		lexer.TkEqual,
-		lexer.TkNotEqual,
-		lexer.TkGt,
-		lexer.TkGte,
-		lexer.TkLt,
-		lexer.TkLte,
-	) {
-		factor()
-	}
+    factor()
+    for acceptAny(
+        lexer.TkEqual,
+        lexer.TkNotEqual,
+        lexer.TkGt,
+        lexer.TkGte,
+        lexer.TkLt,
+        lexer.TkLte,
+    ) {
+        factor()
+    }
 }
 
 func factor() {
 
-	switch tk := lexer.GetToken(); tk.Class {
-	case lexer.TkIdentifier:
-		expect(lexer.TkIdentifier)
-		// function calls
-		if accept(lexer.TkLeftParentenses) {
-			expressionList()
-			expect(lexer.TkRightParenteses)
-		}
-	case lexer.TkString:
-		expect(lexer.TkString)
-	case lexer.TkInt:
-		expect(lexer.TkInt)
-	case lexer.TkBool:
-		expect(lexer.TkBool)
-	default:
-		errorUnexpectedToken(tk.Class)
-	}
+    switch tk := lexer.GetToken(); tk.Class {
+    case lexer.TkIdentifier:
+        expect(lexer.TkIdentifier)
+        // function calls
+        if accept(lexer.TkLeftParentenses) {
+            expressionList()
+            expect(lexer.TkRightParenteses)
+        }
+    case lexer.TkString:
+        expect(lexer.TkString)
+    case lexer.TkInt:
+        expect(lexer.TkInt)
+    case lexer.TkBool:
+        expect(lexer.TkBool)
+    default:
+        errorUnexpectedToken(tk.Class)
+    }
 }

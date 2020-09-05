@@ -1,35 +1,35 @@
 package main
 
 import (
-	"fmt"
-	"os"
+    "fmt"
+    "os"
 )
 
 func main() {
-	fmt.Println("Starting with Go")
+    fmt.Println("Starting with Go")
 
-	if len(os.Args) < 2 {
-		showGlobalHelp()
-		os.Exit(-1)
-	}
+    if len(os.Args) < 2 {
+        showGlobalHelp()
+        os.Exit(-1)
+    }
 
-	switch cmd := os.Args[1]; cmd {
-	case "apply":
-		fmt.Println("Apply sub-command")
-		ApplyCmd(os.Args[2:])
-	case "help":
-		showGlobalHelp()
-	case "validate":
-		fmt.Println("Validate sub-command")
-	default:
-		fmt.Printf("Unknown option '%s'\n", cmd)
-		showGlobalHelp()
-	}
+    switch cmd := os.Args[1]; cmd {
+    case "apply":
+        fmt.Println("Apply sub-command")
+        ApplyCmd(os.Args[2:])
+    case "help":
+        showGlobalHelp()
+    case "validate":
+        fmt.Println("Validate sub-command")
+    default:
+        fmt.Printf("Unknown option '%s'\n", cmd)
+        showGlobalHelp()
+    }
 
 }
 
 func showGlobalHelp() {
-	helpText := `
+    helpText := `
 Octopus vX.X.X
 
 Basic description about what is octopus and what 
@@ -49,5 +49,5 @@ Main Commands:
     version            Show agent version
 
 `
-	fmt.Println(helpText)
+    fmt.Println(helpText)
 }
