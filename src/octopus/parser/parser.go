@@ -215,6 +215,16 @@ func statementBlock(expectedIdent int) {
 	}
 }
 
+func expressionList() {
+
+	for {
+		expression()
+		if !accept(lexer.TkComma) {
+			return
+		}
+	}
+}
+
 func expression() {
 
 	term()
@@ -249,6 +259,11 @@ func factor() {
 	switch tk := lexer.GetToken(); tk.Class {
 	case lexer.TkIdentifier:
 		expect(lexer.TkIdentifier)
+		// function calls
+		if accept(lexer.TkLeftParentenses) {
+			expressionList()
+			expect(lexer.TkRightParenteses)
+		}
 	case lexer.TkString:
 		expect(lexer.TkString)
 	case lexer.TkInt:
