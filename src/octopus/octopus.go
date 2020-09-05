@@ -45,6 +45,7 @@ Main Commands:
     import             Import existing resource into class (requires connectivity with target)
     plan               Generated differences between current state and new state
     pull               Pull catalog from remote Octopus repository
+    secret             Get or store secrets from Octopus Secrets (requires server setup)
     validate           Validate catalog file
     version            Show agent version
 
