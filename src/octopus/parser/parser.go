@@ -12,7 +12,6 @@ const firstIdentLevel int = 0
 func Parse(fileName string) {
 
 	lexer.Init(fileName)
-	lexer.NextToken()
 	topLevel()
 }
 
@@ -124,26 +123,26 @@ func ignoreEmptyNewLines() {
 }
 
 func topLevel() {
+	// request the first token
+	lexer.NextToken()
 
 	for {
+		ignoreEmptyNewLines()
 		tk := lexer.GetToken()
+		fmt.Printf(" => %s\n", lexer.GetTokenText(tk.Class))
 
-		switch tk := lexer.GetToken(); tk.Class {
+		switch tk.Class {
 		case lexer.TkEOF:
 			return
 		case lexer.TkNewLine:
 			expect(lexer.TkNewLine)
-			continue
 		case lexer.TkClassDef:
 			expect(lexer.TkClassDef)
 			class(firstIdentLevel)
-			continue
 		default:
 			errorUnexpectedToken(tk.Class)
 		}
 
-		fmt.Printf("%s => %s\n", lexer.GetTokenText(tk.Class), tk.Value)
-		lexer.NextToken()
 	}
 }
 
@@ -162,8 +161,13 @@ func statement(expectedIdent int) {
 
 	ignoreEmptyNewLines()
 
-	for lexer.GetIdentLevel() == expectedIdent {
+	for lexer.GetIdentLevel() == expectedIdent && !isEOF() {
 		ignoreEmptyNewLines()
+
+		if isEOF() {
+			return
+		}
+
 		fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
 		switch tk := lexer.GetToken(); tk.Class {
 
@@ -197,19 +201,21 @@ func resource(name string, expectedIdent int) {
 	expect(lexer.TkResourceStmt)
 	tkResourceName := lexer.GetToken()
 	acceptAny(lexer.TkString, lexer.TkIdentifier)
-
 	fmt.Printf("Resource : %s=%s\n", name, tkResourceName.Value)
 	expect(lexer.TkColon)
 	expect(lexer.TkNewLine)
-
 	statementBlock(expectedIdent + 1)
 }
 
 func statementBlock(expectedIdent int) {
 
-	ignoreEmptyNewLines()
-
 	for lexer.GetIdentLevel() == expectedIdent {
+		ignoreEmptyNewLines()
+
+		if isEOF() {
+			return
+		}
+
 		fmt.Printf("IDENTITY_LEVEL_HERE=%d\n", lexer.GetIdentLevel())
 		statement(expectedIdent)
 	}

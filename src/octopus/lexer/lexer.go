@@ -396,12 +396,6 @@ func GetIdentLevel() int {
 // to capture the next token (if available)
 func NextToken() {
 
-	// check for EOF flag
-	if lexer.fdEnd {
-		lexer.pushToken(TkEOF, "")
-		return
-	}
-
 	// lexer.tkIndex might be not poiting to
 	// last element. If that's the case we just
 	// move the index forward.
@@ -411,6 +405,12 @@ func NextToken() {
 	}
 
 	lexer.nextChar()
+
+	// check for EOF flag
+	if lexer.fdEnd {
+		lexer.pushToken(TkEOF, "")
+		return
+	}
 
 	// if the last token was a new line,
 	// we a going to count the number of idents
